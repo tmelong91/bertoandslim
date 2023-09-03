@@ -2,7 +2,7 @@ name: Deploy to elstic beanstalk
 on: 
     push:
       branches:
-        main
+        master
     workflow_dispatch:
 jobs: 
     buildanddeploytoelb:
