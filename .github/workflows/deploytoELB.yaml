@@ -1,0 +1,52 @@
+name: Deploy to elstic beanstalk
+on: 
+    push:
+      branches:
+        main
+    workflow_dispatch:
+jobs: 
+    buildanddeploytoelb:
+        runs-on: ubuntu-latest
+        permissions: 
+            contents: read
+            packages: write 
+        steps:
+            - name: checkout code from repo 
+              uses: actions/checkout@v3    
+            - name: setup the java and maven environment
+              uses: actions/setup-java@v3
+              with: 
+                distribution: 'adopt'
+                java-version:  '11'
+            - name: build artifact with maven
+              run: mvn package
+            - name: perform code analysis with sonarqube 
+              run: mvn sonar:sonar -Dsonar.projectKey=xashywebapp -Dsonar.host.url=${{secrets.SONAR_HOST_URL}} -Dsonar.login=${{secrets.SONAR_LOGIN_TOKEN}}
+            - name: publish to github packages 
+              run: mvn --batch-mode deploy 
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: authenticate to aws account 
+              uses: aws-actions/configure-aws-credentials@v1
+              with:
+                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+                aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+                aws-region: ${{secrets.AWS_REGION}}
+            - name: deploy to s3 
+              run: aws s3 cp target/*war s3://webappbucketmvn
+### Create an ap[plication version for elb. make sure you have everything
+            - name: create an elb app version for the artifact 
+              run: |
+                aws elasticbeanstalk create-application-version \
+                --application-name xashy-webapp \
+                --source-bundle S3Bucket="webappbucketmvn",S3Key="xashy-webapp.war" \
+                --version-label "ver-${{ github.sha }}" \
+                --description "commit-sha-${{ github.sha }}"
+               
+            - name: update the environment with the app version.
+              run:  aws elasticbeanstalk update-environment --environment-name xashy-webapp-dev --version-label "ver-${{ github.sha }}" --version-label "ver-${{ github.sha }}" 
+
+
+
+
+            
