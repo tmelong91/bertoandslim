@@ -19,13 +19,12 @@ jobs:
                 distribution: 'adopt'
                 java-version:  '11'
             - name: build artifact with maven
-              run: mvn package
-            - name: perform code analysis with sonarqube 
-              run: mvn sonar:sonar -Dsonar.projectKey=xashywebapp -Dsonar.host.url=${{secrets.SONAR_HOST_URL}} -Dsonar.login=${{secrets.SONAR_LOGIN_TOKEN}}
-            - name: publish to github packages 
-              run: mvn --batch-mode deploy 
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+               run: mvn package
+            - name: Build and analyze with sonacloud
+               env:
+               GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+               SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+               run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=bertoandslim
             - name: authenticate to aws account 
               uses: aws-actions/configure-aws-credentials@v1
               with:
